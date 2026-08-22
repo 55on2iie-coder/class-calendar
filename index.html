@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수업 진도 달력</title>
+    <!-- Tailwind CSS & Font Awesome Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    #inputShowOnCalendar { flex-shrink: 0; }
+@media (max-width: 390px) {
+  #selectLessonSession + label { padding-left: .55rem; padding-right: .55rem; }
+}
+</style>
+
+<style id="final-mobile-optimization">
+/* Final responsive/mobile optimization */
+html, body { max-width: 100%; overflow-x: hidden; }
+body { -webkit-text-size-adjust: 100%; }
+button, input, select, textarea { font: inherit; }
+button { touch-action: manipulation; }
+input, select, textarea { max-width: 100%; }
+
+@media (max-width: 640px) {
+  /* Keep the app inside the phone viewport */
+  .container, .max-w-7xl, .max-w-6xl, .max-w-5xl {
+    max-width: 100% !important;
+  }
+
+  /* Toolbar/filter rows can wrap instead of being clipped */
+  .flex-wrap-mobile {
+    flex-wrap: wrap !important;
+  }
+
+  /* Prevent long filter labels from forcing horizontal scrolling */
+  select {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  #selectLessonSession {
+    width: 100%;
+  }
+
+  /* Calendar remains readable on narrow screens */
+  .calendar-grid {
+    min-width: 0 !important;
+  }
+
+  /* Modal sizing */
+  [role="dialog"], .modal, .fixed.inset-0 > div {
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  /* Long text should wrap */
+  .break-mobile {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* Comfortable touch targets */
+  button {
+    min-height: 38px;
+  }
+}
+
+/* Very narrow phones */
+@media (max-width: 390px) {
+  .text-xs { font-size: 0.72rem; }
+  .px-3 { padding-left: .65rem; padding-right: .65rem; }
+  .px-4 { padding-left: .75rem; padding-right: .75rem; }
+}
+</style>
+
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-100">
+                    <i class="fa-solid fa-calendar-days text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base text-slate-900 leading-tight">수업 진도 달력</h1>
+                    <p class="text-[11px] font-medium text-slate-500">스마트한 학년·반별 진도 관리 시스템</p>
+                </div>
+            </div>
+
+            <!-- Header buttons -->
+            <div class="flex items-center space-x-2">
+                <!-- Sync Status Indicator -->
+                <div id="cloudSyncStatus" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80 mr-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="syncStatusText">클라우드 실시간 동기화 중</span>
+                </div>
+
+                <!-- Google account -->
+                <button id="googleSignInBtn" onclick="handleGoogleSignIn()" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition flex items-center space-x-1.5 shadow-sm">
+                    <i class="fa-brands fa-google text-red-500"></i>
+                    <span id="googleSignInText">Google 로그인</span>
+                </button>
+
+                <button onclick="openGradeManageModal()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-graduation-cap text-slate-500"></i>
+                    <span class="hidden sm:inline">학년 관리</span>
+                </button>
+                <button onclick="openClassManageModal()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-users text-slate-500"></i>
+                    <span class="hidden sm:inline">반 관리</span>
+                </button>
+                <button onclick="openUnitManageModal()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-book-open text-slate-500"></i>
+                    <span class="hidden sm:inline">단원 관리</span>
+                </button>
+                <button onclick="openRegisterModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition shadow-sm shadow-indigo-200 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <span>진도 작성</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <nav class="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+            
+            <div class="flex items-center space-x-3 flex-wrap gap-y-2">
+                <button onclick="goToToday()" class="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition shadow-2xs">
+                    오늘
+                </button>
+                
+                <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl">
+                    <button onclick="changeMonth(-1)" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-600 hover:bg-white transition">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+                    
+                    <div class="flex items-center space-x-1 px-2">
+                        <select id="selectYear" onchange="onYearMonthChange()" class="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
+                        </select>
+                        <span class="text-xs font-bold text-slate-800">년</span>
+                        
+                        <select id="selectMonth" onchange="onYearMonthChange()" class="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
+                            <option value="0">1</option>
+                            <option value="1">2</option>
+                            <option value="2">3</option>
+                            <option value="3">4</option>
+                            <option value="4">5</option>
+                            <option value="5">6</option>
+                            <option value="6">7</option>
+                            <option value="7">8</option>
+                            <option value="8">9</option>
+                            <option value="9">10</option>
+                            <option value="10">11</option>
+                            <option value="11">12</option>
+                        </select>
+                        <span class="text-xs font-bold text-slate-800">월</span>
+                    </div>
+
+                    <button onclick="changeMonth(1)" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-600 hover:bg-white transition">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                </div>
+
+                <div class="bg-slate-100 p-1 rounded-xl flex items-center space-x-1">
+                    <button id="viewBtnCalendar" onclick="switchView('calendar')" class="px-3 py-1 text-xs font-bold rounded-lg bg-white text-indigo-600 shadow-2xs transition">
+                        달력
+                    </button>
+                    <button id="viewBtnList" onclick="switchView('list')" class="px-3 py-1 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
+                        목록
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters & Search Input -->
+            <div class="flex items-center space-x-2 flex-wrap gap-y-2">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </span>
+                    <input type="text" id="searchInput" oninput="handleSearch()" placeholder="검색..." 
+                           class="w-36 sm:w-44 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                </div>
+
+                <select id="filterGrade" onchange="handleFilterChange()" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                    <option value="">전체 학년</option>
+                </select>
+
+                <select id="filterClass" onchange="handleFilterChange()" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                    <option value="">전체 반</option>
+                </select>
+
+                <select id="filterUnit" onchange="handleFilterChange()" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                    <option value="">전체 단원</option>
+                </select>
+            </div>
+
+        </div>
+    </nav>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Calendar View Container -->
+        <div id="calendarView" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <!-- 6컬럼 (월, 화, 수, 목, 금, 토) 헤더 -->
+            <div class="grid grid-cols-6 border-b border-slate-200 bg-slate-50/75 text-center py-3 text-xs font-bold text-slate-600">
+                <div>월</div>
+                <div>화</div>
+                <div>수</div>
+                <div>목</div>
+                <div>금</div>
+                <div class="text-indigo-600">토</div>
+            </div>
+            <!-- 6컬럼 달력 셀 그리드 -->
+            <div id="calendarGrid" class="grid grid-cols-6 flex-1 divide-x divide-y divide-slate-200 [grid-auto-rows:minmax(120px,auto)]">
+            </div>
+        </div>
+
+        <!-- List View Container -->
+        <div id="listView" class="hidden space-y-3">
+            <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-regular fa-calendar-check text-indigo-600 text-sm"></i>
+                    <span class="text-xs font-bold text-slate-800">조회 기간 설정:</span>
+                    <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl" id="listPresetButtons">
+                        <button onclick="setListPreset('all')" id="btnPresetAll" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">전체</button>
+                        <button onclick="setListPreset('month')" id="btnPresetMonth" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white text-indigo-600 shadow-2xs transition">이번 달</button>
+                        <button onclick="setListPreset('week')" id="btnPresetWeek" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">최근 1주일</button>
+                        <button onclick="setListPreset('1month')" id="btnPreset1Month" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">최근 1개월</button>
+                        <button onclick="setListPreset('custom')" id="btnPresetCustom" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">직접 지정</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2 text-xs">
+                    <input type="date" id="listStartDate" onchange="handleListCustomDateChange()" 
+                           class="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                    <span class="text-slate-400 font-bold">~</span>
+                    <input type="date" id="listEndDate" onchange="handleListCustomDateChange()" 
+                           class="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                </div>
+            </div>
+
+            <div id="listContainer" class="space-y-3">
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 진도 등록/수정 모달 -->
+    <div id="registerModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs hidden px-4 py-6 overflow-y-auto">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg border border-slate-100 overflow-hidden my-auto transform transition-all">
+            
+            <div class="flex items-center justify-between px-6 pt-6 pb-4">
+                <div class="flex items-center space-x-2">
+                    <div class="text-indigo-500 text-lg">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <h2 id="modalTitle" class="text-lg font-bold text-slate-900">새 수업 진도 등록</h2>
+                </div>
+                <button onclick="closeRegisterModal()" class="text-slate-400 hover:text-slate-600 transition text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="registerForm" onsubmit="handleFormSubmit(event)" class="px-6 pb-6 space-y-4">
+                <input type="hidden" id="editEntryId" value="">
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1.5">날짜</label>
+                    <input type="date" id="inputDate" required 
+                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1.5">학년 선택 (복수 선택 가능)</label>
+                    <div class="flex flex-wrap gap-2" id="gradeChipsContainer"></div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1.5">반 선택 (복수 선택 가능)</label>
+                    <div class="flex flex-wrap gap-2" id="classChipsContainer"></div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1.5">교시 선택 (복수 선택 가능)</label>
+                    <div class="flex flex-wrap gap-1.5" id="periodChipsContainer"></div>
+                </div>
+
+                <!-- 차시 선택 + 차시의 달력 표시 여부 -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5 gap-2 flex-wrap">
+                        <label class="block text-xs font-medium text-slate-700">차시 선택 <span class="text-slate-400 font-normal">(선택)</span></label>
+                        <button type="button" onclick="addLessonSessionOption()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition">
+                            + 차시 추가
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="selectLessonSession" onchange="handleLessonSessionSelectChange()" class="flex-1 min-w-0 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                        </select>
+                        <label class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer text-xs font-medium text-slate-600 select-none whitespace-nowrap">
+                            <input type="checkbox" id="inputShowOnCalendar" checked class="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300 cursor-pointer">
+                            <span>차시를 달력에 표시</span>
+                        </label>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">차시를 선택하고, 체크하면 차시가 달력의 진도 카드에 표시됩니다.</p>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-medium text-slate-700">단원 선택</label>
+                        <button type="button" onclick="openUnitManageModal()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition">
+                            + 새 단원 추가
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <select id="selectUnit" class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                        </select>
+                        <button type="button" onclick="deleteCurrentUnit()" class="px-3 py-2 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs hover:bg-rose-100 transition" title="선택 단원 삭제">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1.5">수업 내용</label>
+                    <textarea id="inputContent" rows="3" required placeholder="수업 내용을 입력하세요..."
+                              class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition resize-none"></textarea>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-medium text-slate-700">비고 / 참고사항</label>
+                        <label class="inline-flex items-center space-x-1.5 cursor-pointer text-xs font-medium text-slate-600 select-none">
+                            <input type="checkbox" id="inputShowNotes" checked class="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300 cursor-pointer">
+                            <span>비고를 달력에 표시</span>
+                        </label>
+                    </div>
+                    <input type="text" id="inputNotes" placeholder="비고 및 참고사항 (선택)" 
+                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                </div>
+
+                <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+                    <button type="button" id="deleteEntryBtn" onclick="handleDeleteFromModal()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-semibold transition hidden">
+                        삭제
+                    </button>
+                    <button type="button" onclick="closeRegisterModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">
+                        취소
+                    </button>
+                    <button type="submit" id="submitBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition shadow-sm">
+                        진도 등록
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 학년 관리 모달 -->
+    <div id="gradeManageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs hidden px-4 py-6">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm border border-slate-100 overflow-hidden">
+            <div class="flex items-center justify-between px-6 pt-6 pb-4">
+                <h3 class="text-base font-bold text-slate-900">학년 관리</h3>
+                <button onclick="closeGradeManageModal()" class="text-slate-400 hover:text-slate-600 transition text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-6 pb-6 space-y-4">
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="newGradeNameInput" placeholder="예: 4학년, 유치부 등" 
+                           class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500">
+                    <button onclick="addGradeName()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition">
+                        추가
+                    </button>
+                </div>
+                <div id="gradeListContainer" class="max-h-48 overflow-y-auto space-y-2 border border-slate-100 rounded-2xl p-2 bg-slate-50/50">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 반 관리 모달 -->
+    <div id="classManageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs hidden px-4 py-6">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm border border-slate-100 overflow-hidden">
+            <div class="flex items-center justify-between px-6 pt-6 pb-4">
+                <h3 class="text-base font-bold text-slate-900">반 관리</h3>
+                <button onclick="closeClassManageModal()" class="text-slate-400 hover:text-slate-600 transition text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-6 pb-6 space-y-4">
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="newClassNameInput" placeholder="예: 4반, 특수반 등" 
+                           class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500">
+                    <button onclick="addClassName()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition">
+                        추가
+                    </button>
+                </div>
+                <div id="classListContainer" class="max-h-48 overflow-y-auto space-y-2 border border-slate-100 rounded-2xl p-2 bg-slate-50/50">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 단원 관리 모달 -->
+    <div id="unitManageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs hidden px-4 py-6">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm border border-slate-100 overflow-hidden">
+            <div class="flex items-center justify-between px-6 pt-6 pb-4">
+                <h3 class="text-base font-bold text-slate-900">단원 관리</h3>
+                <button onclick="closeUnitManageModal()" class="text-slate-400 hover:text-slate-600 transition text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-6 pb-6 space-y-4">
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="newUnitNameInput" placeholder="예: 소단원 및 학습주제" 
+                           class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500">
+                    <button onclick="addUnitName()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition">
+                        추가
+                    </button>
+                </div>
+                <div id="unitListContainer" class="max-h-48 overflow-y-auto space-y-2 border border-slate-100 rounded-2xl p-2 bg-slate-50/50">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 컨텍스트 메뉴 -->
+    <div id="contextMenu" class="fixed z-50 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 w-36 hidden text-xs font-medium text-slate-700">
+        <button onclick="contextActionEdit()" class="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2 text-slate-700">
+            <i class="fa-solid fa-pen text-slate-400 w-4"></i><span>수정</span>
+        </button>
+        <button onclick="contextActionDuplicate()" class="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2 text-indigo-600">
+            <i class="fa-solid fa-copy text-indigo-400 w-4"></i><span>진도 복사</span>
+        </button>
+        <button onclick="contextActionDelete()" class="w-full text-left px-4 py-2 hover:bg-rose-50 flex items-center space-x-2 text-rose-600">
+            <i class="fa-solid fa-trash-can text-rose-400 w-4"></i><span>삭제</span>
+        </button>
+    </div>
+
+    <!-- 토스트 알림 -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl text-xs font-medium shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-2">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastMessage">작업이 완료되었습니다.</span>
+    </div>
+<script>
+  window.__firebase_config = JSON.stringify({
+   apiKey: "AIzaSyBqD8HnF5NeuRyT6ZvAjORjFxkdnthlSoA",
+    authDomain: "school-calendar-5b4d6.firebaseapp.com",
+    projectId: "school-calendar-5b4d6",
+    storageBucket: "school-calendar-5b4d6.firebasestorage.app",
+    messagingSenderId: "790784571797",
+    appId: "1:790784571797:web:167314a92c682042b3de9c"
+  });
+  window.__app_id = "school carlendar"; 
+</script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const PERIODS = ["1교시", "2교시", "3교시", "4교시", "5교시", "6교시", "7교시", "8교시", "동아리", "방과후"];
+
+        const CLASS_COLOR_PALETTES = [
+            { bg: 'bg-emerald-50/90', border: 'border-emerald-300', tagBorder: 'border-emerald-200', badgeBg: 'bg-emerald-600' },
+            { bg: 'bg-indigo-50/90', border: 'border-indigo-300', tagBorder: 'border-indigo-200', badgeBg: 'bg-indigo-600' },
+            { bg: 'bg-amber-50/90', border: 'border-amber-300', tagBorder: 'border-amber-200', badgeBg: 'bg-amber-600' },
+            { bg: 'bg-rose-50/90', border: 'border-rose-300', tagBorder: 'border-rose-200', badgeBg: 'bg-rose-600' },
+            { bg: 'bg-purple-50/90', border: 'border-purple-300', tagBorder: 'border-purple-200', badgeBg: 'bg-purple-600' },
+            { bg: 'bg-sky-50/90', border: 'border-sky-300', tagBorder: 'border-sky-200', badgeBg: 'bg-sky-600' },
+            { bg: 'bg-teal-50/90', border: 'border-teal-300', tagBorder: 'border-teal-200', badgeBg: 'bg-teal-600' },
+            { bg: 'bg-fuchsia-50/90', border: 'border-fuchsia-300', tagBorder: 'border-fuchsia-200', badgeBg: 'bg-fuchsia-600' },
+            { bg: 'bg-orange-50/90', border: 'border-orange-300', tagBorder: 'border-orange-200', badgeBg: 'bg-orange-600' },
+            { bg: 'bg-cyan-50/90', border: 'border-cyan-300', tagBorder: 'border-cyan-200', badgeBg: 'bg-cyan-600' },
+            { bg: 'bg-pink-50/90', border: 'border-pink-300', tagBorder: 'border-pink-200', badgeBg: 'bg-pink-600' },
+            { bg: 'bg-violet-50/90', border: 'border-violet-300', tagBorder: 'border-violet-200', badgeBg: 'bg-violet-600' },
+            { bg: 'bg-lime-50/90', border: 'border-lime-300', tagBorder: 'border-lime-200', badgeBg: 'bg-lime-600' },
+            { bg: 'bg-blue-50/90', border: 'border-blue-300', tagBorder: 'border-blue-200', badgeBg: 'bg-blue-600' },
+            { bg: 'bg-red-50/90', border: 'border-red-300', tagBorder: 'border-red-200', badgeBg: 'bg-red-600' }
+        ];
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-class-calendar';
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let isSyncingWithCloud = false;
+        let pendingGoogleMigration = false;
+        const GOOGLE_MIGRATION_KEY = 'class_progress_calendar_google_migration';
+
+        const realToday = new Date();
+        let currentYear = realToday.getFullYear();
+        let currentMonth = realToday.getMonth();
+        let currentView = 'calendar';
+
+        let appState = {
+            grades: ["1학년", "2학년", "3학년"],
+            classes: ["1반", "2반", "3반"],
+            units: ["주생활과 주거 문화", "오리엔테이션", "디지털 디자인 기초", "의복의 구성과 관리"],
+            lessonSessions: Array.from({ length: 20 }, (_, i) => `${i + 1}차시`),
+            entries: []
+        };
+
+        let selectedFormGrades = ["1학년"];
+        let selectedFormClasses = ["1반"];
+        let selectedFormPeriods = ["1교시"];
+        let selectedFormLessonSession = "";
+        let selectedShowOnCalendar = true;
+        let activeContextMenuEntryId = null;
+        let draggedEntryId = null;
+
+        let listPreset = 'month';
+        let listStartDate = '';
+        let listEndDate = '';
+
+        function getClassColor(entry) {
+            if (!entry) return CLASS_COLOR_PALETTES[0];
+            const totalGradesCount = appState.grades && appState.grades.length > 0 ? appState.grades.length : 3;
+            
+            let gradeStr = '공통';
+            if (entry.grades && entry.grades.length > 0) {
+                if (entry.grades.length === totalGradesCount) {
+                    gradeStr = '전학년';
+                } else {
+                    gradeStr = [...entry.grades].sort().join('+');
+                }
+            }
+            
+            let classArr = entry.classes || (entry.className ? entry.className.split(', ') : []);
+            let classStr = classArr.length > 0 ? [...classArr].sort().join('+') : '공통';
+
+            const key = `${gradeStr}__${classStr}`;
+            let hash = 0;
+            for (let i = 0; i < key.length; i++) {
+                hash = (hash << 5) - hash + key.charCodeAt(i);
+                hash |= 0;
+            }
+            return CLASS_COLOR_PALETTES[Math.abs(hash) % CLASS_COLOR_PALETTES.length];
+        }
+
+        function formatDateISO(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function loadLocalState() {
+            const saved = localStorage.getItem('class_progress_calendar_state');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    appState = { ...appState, ...parsed };
+                    if (Array.isArray(appState.entries)) {
+                        appState.entries = appState.entries.map(entry => ({
+                            ...entry,
+                            showOnCalendar: entry.showOnCalendar !== false
+                        }));
+                    }
+                    if (!Array.isArray(appState.lessonSessions) || appState.lessonSessions.length === 0) {
+                        appState.lessonSessions = Array.from({ length: 20 }, (_, i) => `${i + 1}차시`);
+                    }
+                } catch(e) {
+                    console.error("Failed to parse saved state", e);
+                }
+            }
+        }
+
+        function saveLocalState() {
+            localStorage.setItem('class_progress_calendar_state', JSON.stringify(appState));
+        }
+
+        async function initCloudSync() {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                try {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // Finish a Google redirect flow if one is returning to the app.
+                    try {
+                        await getRedirectResult(auth);
+                    } catch (redirectError) {
+                        console.warn('Google redirect result:', redirectError);
+                        if (redirectError && redirectError.code === 'auth/credential-already-in-use') {
+                            // The Google account already exists. The auth state below will be
+                            // resolved after the redirect; keep the local snapshot for migration.
+                        }
+                    }
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else if (!auth.currentUser) {
+                        await signInAnonymously(auth);
+                    }
+
+                    onAuthStateChanged(auth, async (user) => {
+                        currentUser = user;
+                        updateGoogleAccountUI(user);
+                        if (user) {
+                            updateSyncBadge(true, user.isAnonymous ? '클라우드 동기화 연결됨' : 'Google 계정으로 동기화 중');
+
+                            // If the user just upgraded/switched to Google, move the local
+                            // snapshot into the Google account before subscribing.
+                            if (!user.isAnonymous && (pendingGoogleMigration || localStorage.getItem(GOOGLE_MIGRATION_KEY))) {
+                                await migrateLocalStateToGoogle(user);
+                                pendingGoogleMigration = false;
+                                localStorage.removeItem(GOOGLE_MIGRATION_KEY);
+                            }
+                            subscribeCloudData();
+                        }
+                    });
+                } catch (e) {
+                    console.warn('Firebase initialization skipped or offline:', e);
+                    updateSyncBadge(false, '로컬 모드로 작동 중');
+                    updateGoogleAccountUI(null);
+                }
+            } else {
+                updateSyncBadge(false, '로컬 모드로 작동 중');
+                updateGoogleAccountUI(null);
+            }
+        }
+
+        function updateGoogleAccountUI(user) {
+            const btn = document.getElementById('googleSignInBtn');
+            const text = document.getElementById('googleSignInText');
+            if (!btn || !text) return;
+
+            if (user && !user.isAnonymous) {
+                const displayName = user.displayName || user.email || 'Google 계정';
+                text.innerText = displayName.length > 16 ? displayName.slice(0, 16) + '…' : displayName;
+                btn.className = 'px-3 py-2 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 transition flex items-center space-x-1.5 shadow-sm';
+                btn.disabled = true;
+                btn.title = '이 Google 계정으로 모든 기기에서 동기화됩니다.';
+            } else {
+                text.innerText = 'Google 로그인';
+                btn.className = 'px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition flex items-center space-x-1.5 shadow-sm';
+                btn.disabled = false;
+                btn.title = 'Google 계정으로 로그인하면 여러 기기에서 같은 진도를 사용할 수 있습니다.';
+            }
+        }
+
+        function snapshotLocalStateForGoogle() {
+            const snapshot = {
+                grades: appState.grades || [],
+                classes: appState.classes || [],
+                units: appState.units || [],
+                lessonSessions: appState.lessonSessions || [],
+                entries: appState.entries || []
+            };
+            const defaults = {
+                grades: ['1학년', '2학년', '3학년'],
+                classes: ['1반', '2반', '3반'],
+                units: ['주생활과 주거 문화', '오리엔테이션', '디지털 디자인 기초', '의복의 구성과 관리'],
+                lessonSessions: Array.from({length: 20}, (_, i) => `${i + 1}차시`)
+            };
+            const meaningful = snapshot.entries.length > 0 ||
+                JSON.stringify(snapshot.grades) !== JSON.stringify(defaults.grades) ||
+                JSON.stringify(snapshot.classes) !== JSON.stringify(defaults.classes) ||
+                JSON.stringify(snapshot.units) !== JSON.stringify(defaults.units) ||
+                JSON.stringify(snapshot.lessonSessions) !== JSON.stringify(defaults.lessonSessions);
+            return meaningful ? snapshot : null;
+        }
+
+        async function migrateLocalStateToGoogle(user) {
+            let snapshot = null;
+            try {
+                const raw = localStorage.getItem(GOOGLE_MIGRATION_KEY);
+                if (raw) snapshot = JSON.parse(raw);
+            } catch (e) {
+                console.warn('Google migration snapshot parse failed:', e);
+            }
+            if (!snapshot) snapshot = snapshotLocalStateForGoogle();
+            if (!snapshot || !db || !user || user.isAnonymous) return;
+
+            try {
+                const configRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'config');
+                const existingConfigSnap = await getDoc(configRef);
+                if (!existingConfigSnap.exists()) {
+                    await setDoc(configRef, {
+                        grades: snapshot.grades,
+                        classes: snapshot.classes,
+                        units: snapshot.units,
+                        lessonSessions: snapshot.lessonSessions
+                    });
+                }
+
+                for (const entry of snapshot.entries) {
+                    const entryRef = doc(db, 'artifacts', appId, 'users', user.uid, 'entries', entry.id);
+                    await setDoc(entryRef, entry);
+                }
+
+                appState.grades = snapshot.grades;
+                appState.classes = snapshot.classes;
+                appState.units = snapshot.units;
+                appState.lessonSessions = snapshot.lessonSessions;
+                appState.entries = snapshot.entries;
+                saveLocalState();
+                showToast('Google 계정으로 데이터 연결이 완료되었습니다.');
+            } catch (e) {
+                console.error('Failed to migrate local data to Google account:', e);
+                showToast('Google 계정 연결 중 데이터 이전에 실패했습니다.');
+            }
+        }
+
+        async function handleGoogleSignIn() {
+            if (!auth) {
+                showToast('Firebase 연결이 아직 준비되지 않았습니다.');
+                return;
+            }
+            if (currentUser && !currentUser.isAnonymous) return;
+
+            const snapshot = snapshotLocalStateForGoogle();
+            if (snapshot) {
+                localStorage.setItem(GOOGLE_MIGRATION_KEY, JSON.stringify(snapshot));
+                pendingGoogleMigration = true;
+            }
+
+            try {
+                const provider = new GoogleAuthProvider();
+                provider.setCustomParameters({ prompt: 'select_account' });
+                // Redirect is preferred for mobile browsers and also works on desktop.
+                await signInWithRedirect(auth, provider);
+            } catch (e) {
+                console.error('Google sign-in failed:', e);
+                pendingGoogleMigration = false;
+                localStorage.removeItem(GOOGLE_MIGRATION_KEY);
+                showToast('Google 로그인에 실패했습니다. Firebase 설정을 확인해주세요.');
+            }
+        }
+
+        window.handleGoogleSignIn = handleGoogleSignIn;
+
+
+        function updateSyncBadge(isOnline, text) {
+            const statusEl = document.getElementById('cloudSyncStatus');
+            const textEl = document.getElementById('syncStatusText');
+            if (statusEl && textEl) {
+                textEl.innerText = text;
+                if (isOnline) {
+                    statusEl.className = "hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80 mr-1";
+                } else {
+                    statusEl.className = "hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 mr-1";
+                }
+            }
+        }
+
+        function subscribeCloudData() {
+            if (!db || !currentUser) return;
+
+            // 1) Config Sync (Grades, Classes, Units)
+            const configRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
+            onSnapshot(configRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.grades) appState.grades = data.grades;
+                    if (data.classes) appState.classes = data.classes;
+                    if (data.units) appState.units = data.units;
+                    if (Array.isArray(data.lessonSessions) && data.lessonSessions.length > 0) appState.lessonSessions = data.lessonSessions;
+                    if (!Array.isArray(appState.lessonSessions) || appState.lessonSessions.length === 0) {
+                        appState.lessonSessions = Array.from({ length: 20 }, (_, i) => `${i + 1}차시`);
+                    }
+                    populateGradeFilters();
+                    populateClassFilters();
+                    saveLocalState();
+                    refreshView();
+                } else {
+                    // Seed initial config to cloud
+                    setDoc(configRef, {
+                        grades: appState.grades,
+                        classes: appState.classes,
+                        units: appState.units,
+                        lessonSessions: appState.lessonSessions
+                    }).catch(console.error);
+                }
+            }, (err) => console.error("Config sync error:", err));
+
+            // 2) Entries Collection Sync
+            const entriesColRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'entries');
+            onSnapshot(entriesColRef, (querySnap) => {
+                const cloudEntries = [];
+                querySnap.forEach((docSnap) => {
+                    cloudEntries.push({
+                        id: docSnap.id,
+                        ...docSnap.data(),
+                        showOnCalendar: docSnap.data().showOnCalendar !== false
+                    });
+                });
+
+                // If cloud is brand new and local has entries, seed cloud
+                if (cloudEntries.length === 0 && appState.entries.length > 0) {
+                    appState.entries.forEach(entry => saveEntryToCloud(entry));
+                } else {
+                    appState.entries = cloudEntries;
+                    saveLocalState();
+                    refreshView();
+                }
+            }, (err) => console.error("Entries sync error:", err));
+        }
+
+        async function saveConfigToCloud() {
+            if (!db || !currentUser) return;
+            try {
+                const configRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
+                await setDoc(configRef, {
+                    grades: appState.grades,
+                    classes: appState.classes,
+                    units: appState.units,
+                    lessonSessions: appState.lessonSessions
+                });
+            } catch(e) {
+                console.error("Failed to save config to cloud:", e);
+            }
+        }
+
+        async function saveEntryToCloud(entry) {
+            if (!db || !currentUser) return;
+            try {
+                const entryRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'entries', entry.id);
+                await setDoc(entryRef, entry);
+            } catch(e) {
+                console.error("Failed to save entry to cloud:", e);
+            }
+        }
+
+        async function deleteEntryFromCloud(entryId) {
+            if (!db || !currentUser) return;
+            try {
+                const entryRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'entries', entryId);
+                await deleteDoc(entryRef);
+            } catch(e) {
+                console.error("Failed to delete entry from cloud:", e);
+            }
+        }
+
+        window.onload = function() {
+            loadLocalState();
+            if (!appState.grades || appState.grades.length === 0) {
+                appState.grades = ["1학년", "2학년", "3학년"];
+            }
+            populateYearDropdown();
+            document.getElementById('selectYear').value = currentYear;
+            document.getElementById('selectMonth').value = currentMonth;
+            
+            populateGradeFilters();
+            populateClassFilters();
+            populateUnitFilters();
+            setListPreset('month', false);
+            renderCalendar();
+            renderList();
+
+            // Start Firebase Auth & Live Sync
+            initCloudSync();
+        };
+
+        function populateYearDropdown() {
+            const selectYear = document.getElementById('selectYear');
+            selectYear.innerHTML = '';
+            const startYear = Math.min(2020, currentYear - 2);
+            const endYear = 2060;
+            for (let y = startYear; y <= endYear; y++) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.innerText = y;
+                selectYear.appendChild(opt);
+            }
+        }
+
+        function populateGradeFilters() {
+            const filterGrade = document.getElementById('filterGrade');
+            const currentFilterVal = filterGrade.value;
+            filterGrade.innerHTML = '<option value="">전체 학년</option>';
+            appState.grades.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g;
+                opt.innerText = g;
+                filterGrade.appendChild(opt);
+            });
+            filterGrade.value = currentFilterVal;
+        }
+
+        function populateClassFilters() {
+            const filterClass = document.getElementById('filterClass');
+            const currentFilterVal = filterClass.value;
+            filterClass.innerHTML = '<option value="">전체 반</option>';
+            appState.classes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.innerText = c;
+                filterClass.appendChild(opt);
+            });
+            filterClass.value = currentFilterVal;
+        }
+
+        function populateUnitFilters() {
+            const filterUnit = document.getElementById('filterUnit');
+            if (!filterUnit) return;
+            const currentFilterVal = filterUnit.value;
+            filterUnit.innerHTML = '<option value="">전체 단원</option>';
+            appState.units.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u;
+                opt.innerText = u;
+                filterUnit.appendChild(opt);
+            });
+            filterUnit.value = currentFilterVal;
+        }
+
+        function switchView(view) {
+            currentView = view;
+            const calView = document.getElementById('calendarView');
+            const listView = document.getElementById('listView');
+            const btnCal = document.getElementById('viewBtnCalendar');
+            const btnList = document.getElementById('viewBtnList');
+
+            if (view === 'calendar') {
+                calView.classList.remove('hidden');
+                listView.classList.add('hidden');
+                btnCal.className = "px-3 py-1 text-xs font-bold rounded-lg bg-white text-indigo-600 shadow-2xs transition";
+                btnList.className = "px-3 py-1 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition";
+                renderCalendar();
+            } else {
+                calView.classList.add('hidden');
+                listView.classList.remove('hidden');
+                btnList.className = "px-3 py-1 text-xs font-bold rounded-lg bg-white text-indigo-600 shadow-2xs transition";
+                btnCal.className = "px-3 py-1 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition";
+                renderList();
+            }
+        }
+
+        function setListPreset(preset, shouldRender = true) {
+            listPreset = preset;
+            const today = new Date();
+            const startInput = document.getElementById('listStartDate');
+            const endInput = document.getElementById('listEndDate');
+
+            if (preset === 'all') {
+                listStartDate = '';
+                listEndDate = '';
+            } else if (preset === 'month') {
+                const firstDay = new Date(currentYear, currentMonth, 1);
+                const lastDay = new Date(currentYear, currentMonth + 1, 0);
+                listStartDate = formatDateISO(firstDay);
+                listEndDate = formatDateISO(lastDay);
+            } else if (preset === 'week') {
+                const oneWeekAgo = new Date(today);
+                oneWeekAgo.setDate(today.getDate() - 7);
+                listStartDate = formatDateISO(oneWeekAgo);
+                listEndDate = formatDateISO(today);
+            } else if (preset === '1month') {
+                const oneMonthAgo = new Date(today);
+                oneMonthAgo.setMonth(today.getMonth() - 1);
+                listStartDate = formatDateISO(oneMonthAgo);
+                listEndDate = formatDateISO(today);
+            }
+
+            if (startInput) startInput.value = listStartDate;
+            if (endInput) endInput.value = listEndDate;
+
+            updateListPresetButtonsUI();
+            if (shouldRender) renderList();
+        }
+
+        function updateListPresetButtonsUI() {
+            const presets = ['All', 'Month', 'Week', '1Month', 'Custom'];
+            presets.forEach(p => {
+                const btn = document.getElementById('btnPreset' + p);
+                if (!btn) return;
+                if (listPreset === p.toLowerCase()) {
+                    btn.className = "px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white text-indigo-600 shadow-2xs transition";
+                } else {
+                    btn.className = "px-2.5 py-1 text-[11px] font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition";
+                }
+            });
+        }
+
+        function handleListCustomDateChange() {
+            listPreset = 'custom';
+            listStartDate = document.getElementById('listStartDate').value;
+            listEndDate = document.getElementById('listEndDate').value;
+            updateListPresetButtonsUI();
+            renderList();
+        }
+
+        function goToToday() {
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentMonth = now.getMonth();
+            document.getElementById('selectYear').value = currentYear;
+            document.getElementById('selectMonth').value = currentMonth;
+            if (listPreset === 'month') {
+                setListPreset('month', false);
+            }
+            refreshView();
+        }
+
+        function changeMonth(direction) {
+            currentMonth += direction;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            } else if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            document.getElementById('selectYear').value = currentYear;
+            document.getElementById('selectMonth').value = currentMonth;
+            if (listPreset === 'month') {
+                setListPreset('month', false);
+            }
+            refreshView();
+        }
+
+        function onYearMonthChange() {
+            currentYear = parseInt(document.getElementById('selectYear').value, 10);
+            currentMonth = parseInt(document.getElementById('selectMonth').value, 10);
+            if (listPreset === 'month') {
+                setListPreset('month', false);
+            }
+            refreshView();
+        }
+
+        function refreshView() {
+            if (currentView === 'calendar') renderCalendar();
+            else renderList();
+        }
+
+        function handleSearch() {
+            refreshView();
+        }
+
+        function handleFilterChange() {
+            refreshView();
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            const searchKey = document.getElementById('searchInput').value.trim().toLowerCase();
+            const filterGrade = document.getElementById('filterGrade').value;
+            const filterClass = document.getElementById('filterClass').value;
+            const filterUnit = document.getElementById('filterUnit').value;
+
+            const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+            const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+            
+            let startDate = new Date(firstDayOfMonth);
+            let dayOfWeek = startDate.getDay();
+            let diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            startDate.setDate(startDate.getDate() + diffToMonday);
+
+            let endDate = new Date(lastDayOfMonth);
+            let endDayOfWeek = endDate.getDay();
+            let diffToSaturday = endDayOfWeek === 0 ? -1 : 6 - endDayOfWeek;
+            endDate.setDate(endDate.getDate() + diffToSaturday);
+
+            let curr = new Date(startDate);
+            while (curr <= endDate) {
+                for (let i = 0; i < 6; i++) {
+                    let cellDate = new Date(curr);
+                    let dateISO = formatDateISO(cellDate);
+                    let isCurrentMonth = cellDate.getMonth() === currentMonth;
+
+                    const cell = document.createElement('div');
+                    cell.className = `p-2 flex flex-col bg-white transition hover:bg-slate-50/50 relative ${!isCurrentMonth ? 'opacity-40 bg-slate-50/30' : ''}`;
+                    
+                    cell.onclick = () => openRegisterModal(dateISO);
+
+                    cell.ondragover = (e) => e.preventDefault();
+                    cell.ondragenter = (e) => {
+                        e.preventDefault();
+                        cell.classList.add('bg-indigo-50/50', 'border-2', 'border-indigo-400');
+                    };
+                    cell.ondragleave = () => {
+                        cell.classList.remove('bg-indigo-50/50', 'border-2', 'border-indigo-400');
+                    };
+                    cell.ondrop = (e) => {
+                        e.preventDefault();
+                        cell.classList.remove('bg-indigo-50/50', 'border-2', 'border-indigo-400');
+                        if (draggedEntryId) {
+                            moveEntryToDate(draggedEntryId, dateISO);
+                        }
+                    };
+
+                    const dateHeader = document.createElement('div');
+                    dateHeader.className = "flex items-center justify-between mb-1.5";
+                    
+                    const dayNumSpan = document.createElement('span');
+                    
+                    const todayISO = formatDateISO(new Date());
+                    const isToday = (todayISO === dateISO);
+
+                    const isSaturday = (cellDate.getDay() === 6);
+                    let dayColorClass = isToday 
+                        ? 'bg-indigo-600 text-white shadow-xs' 
+                        : (isSaturday ? 'text-indigo-600 font-bold' : 'text-slate-700');
+
+                    dayNumSpan.className = `text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${dayColorClass}`;
+                    dayNumSpan.innerText = cellDate.getDate();
+                    dateHeader.appendChild(dayNumSpan);
+
+                    // '달력에 표시'가 꺼진 진도는 목록에는 남기되 달력 카드에서는 숨깁니다.
+                    let dayEntries = appState.entries.filter(e => e.date === dateISO);
+
+                    dayEntries = dayEntries.filter(entry => {
+                        if (filterGrade && (!entry.grades || !entry.grades.includes(filterGrade))) return false;
+                        if (filterClass) {
+                            const entryClasses = entry.classes || (entry.className ? entry.className.split(', ') : []);
+                            if (!entryClasses.includes(filterClass)) return false;
+                        }
+                        if (filterUnit && entry.unit !== filterUnit) return false;
+                        if (searchKey) {
+                            const matchContent = entry.content.toLowerCase().includes(searchKey);
+                            const matchUnit = (entry.unit || '').toLowerCase().includes(searchKey);
+                            const matchNotes = (entry.notes || '').toLowerCase().includes(searchKey);
+                            if (!matchContent && !matchUnit && !matchNotes) return false;
+                        }
+                        return true;
+                    });
+
+                    dayEntries.sort((a, b) => {
+                        const pA = a.periods && a.periods.length > 0 ? a.periods[0] : "";
+                        const pB = b.periods && b.periods.length > 0 ? b.periods[0] : "";
+                        return PERIODS.indexOf(pA) - PERIODS.indexOf(pB);
+                    });
+
+                    if (dayEntries.length > 0) {
+                        const countBadge = document.createElement('span');
+                        countBadge.className = "text-[10px] font-semibold text-slate-400";
+                        countBadge.innerText = `${dayEntries.length}건`;
+                        dateHeader.appendChild(countBadge);
+                    }
+
+                    cell.appendChild(dateHeader);
+
+                    const cardsContainer = document.createElement('div');
+                    cardsContainer.className = "space-y-1.5 flex-1";
+
+                    dayEntries.forEach(entry => {
+                        const card = document.createElement('div');
+                        const palette = getClassColor(entry);
+
+                        card.className = `p-2 rounded-xl border text-xs cursor-grab active:cursor-grabbing shadow-2xs transition hover:shadow-md ${palette.bg} ${palette.border}`;
+                        card.draggable = true;
+
+                        card.ondragstart = () => {
+                            draggedEntryId = entry.id;
+                            card.style.opacity = '0.4';
+                        };
+                        card.ondragend = () => {
+                            draggedEntryId = null;
+                            card.style.opacity = '1';
+                        };
+
+                        card.onclick = (e) => {
+                            e.stopPropagation();
+                            openRegisterModalForEdit(entry);
+                        };
+
+                        card.oncontextmenu = (e) => showContextMenu(e, entry);
+
+                        const totalGradesCount = appState.grades && appState.grades.length > 0 ? appState.grades.length : 3;
+                        let gradeText = '';
+                        if (entry.grades && entry.grades.length > 0) {
+                            if (entry.grades.length === totalGradesCount) {
+                                gradeText = '전학년';
+                            } else {
+                                gradeText = entry.grades.join(', ');
+                            }
+                        }
+                        const classArr = entry.classes || (entry.className ? entry.className.split(', ') : []);
+                        const classText = classArr.join(', ');
+                        let tagText = '';
+                        if (gradeText && classText) {
+                            tagText = `${gradeText} ${classText}`;
+                        } else if (gradeText) {
+                            tagText = gradeText;
+                        } else if (classText) {
+                            tagText = classText;
+                        }
+                        const periodText = (entry.periods && entry.periods.length > 0) ? entry.periods.join(', ') : '';
+                        const lessonSessionText = (entry.showOnCalendar !== false) ? (entry.lessonSession || '') : '';
+
+                        const shouldShowNotes = (entry.showNotes !== false) && entry.notes && entry.notes.trim() !== '';
+
+                        card.innerHTML = `
+                            <div class="flex items-center justify-between gap-1 mb-1 flex-wrap">
+                                ${tagText ? `<span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold text-slate-700 bg-white/80 border ${palette.tagBorder}">${tagText}</span>` : '<span></span>'}
+                                <span class="px-1.5 py-0.5 rounded-md text-[10px] font-semibold text-white ${palette.badgeBg}">${escapeHtml(periodText)}</span>
+                                ${lessonSessionText ? `<span class="px-1.5 py-0.5 rounded-md text-[10px] font-semibold text-indigo-700 bg-white/80 border border-indigo-200">${escapeHtml(lessonSessionText)}</span>` : ''}
+                            </div>
+                            <p class="font-medium text-slate-800 line-clamp-2 leading-tight">${escapeHtml(entry.content)}</p>
+                            ${shouldShowNotes ? `<p class="text-[10px] text-slate-500 mt-1 pt-1 border-t border-slate-200/50 truncate"><i class="fa-regular fa-sticky-note mr-1 text-slate-400"></i>${escapeHtml(entry.notes)}</p>` : ''}
+                        `;
+                        cardsContainer.appendChild(card);
+                    });
+
+                    cell.appendChild(cardsContainer);
+                    grid.appendChild(cell);
+
+                    curr.setDate(curr.getDate() + 1);
+                }
+                curr.setDate(curr.getDate() + 1);
+            }
+        }
+
+        function renderList() {
+            const container = document.getElementById('listContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const searchKey = document.getElementById('searchInput').value.trim().toLowerCase();
+            const filterGrade = document.getElementById('filterGrade').value;
+            const filterClass = document.getElementById('filterClass').value;
+            const filterUnit = document.getElementById('filterUnit').value;
+
+            let allEntries = [...appState.entries];
+
+            allEntries = allEntries.filter(entry => {
+                if (listStartDate && entry.date < listStartDate) return false;
+                if (listEndDate && entry.date > listEndDate) return false;
+
+                if (filterGrade && (!entry.grades || !entry.grades.includes(filterGrade))) return false;
+                if (filterClass) {
+                    const entryClasses = entry.classes || (entry.className ? entry.className.split(', ') : []);
+                    if (!entryClasses.includes(filterClass)) return false;
+                }
+                if (filterUnit && entry.unit !== filterUnit) return false;
+                if (searchKey) {
+                    const matchContent = entry.content.toLowerCase().includes(searchKey);
+                    const matchUnit = (entry.unit || '').toLowerCase().includes(searchKey);
+                    const matchNotes = (entry.notes || '').toLowerCase().includes(searchKey);
+                    if (!matchContent && !matchUnit && !matchNotes) return false;
+                }
+                return true;
+            });
+
+            allEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (allEntries.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-400">
+                        <i class="fa-regular fa-folder-open text-3xl mb-2"></i>
+                        <p class="text-xs font-medium">선택한 기간 내에 등록된 수업 진도가 없습니다.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            allEntries.forEach(entry => {
+                const palette = getClassColor(entry);
+                const item = document.createElement('div');
+                item.className = `p-4 rounded-2xl border transition hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${palette.bg} ${palette.border}`;
+                item.onclick = () => openRegisterModalForEdit(entry);
+                item.oncontextmenu = (e) => showContextMenu(e, entry);
+
+                const totalGradesCount = appState.grades && appState.grades.length > 0 ? appState.grades.length : 3;
+                let gradeText = '';
+                if (entry.grades && entry.grades.length > 0) {
+                    if (entry.grades.length === totalGradesCount) {
+                        gradeText = '전학년';
+                    } else {
+                        gradeText = entry.grades.join(', ');
+                    }
+                }
+                const classArr = entry.classes || (entry.className ? entry.className.split(', ') : []);
+                const classText = classArr.join(', ');
+                let badgeLabel = '';
+                if (gradeText && classText) badgeLabel = `${gradeText} ${classText}`;
+                else if (gradeText) badgeLabel = gradeText;
+                else if (classText) badgeLabel = classText;
+
+                item.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2 text-xs flex-wrap gap-y-1">
+                            <span class="font-bold text-slate-900">${escapeHtml(entry.date)}</span>
+                            ${badgeLabel ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white border ${palette.tagBorder}">${escapeHtml(badgeLabel)}</span>` : ''}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold text-white ${palette.badgeBg}">${entry.periods ? entry.periods.join(', ') : ''}</span>
+                            ${entry.lessonSession ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold text-indigo-700 bg-white border border-indigo-200">${escapeHtml(entry.lessonSession)}</span>` : ''}
+                            <span class="text-slate-500 font-medium">| ${escapeHtml(entry.unit || '')}</span>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-800">${escapeHtml(entry.content)}</p>
+                        ${entry.notes ? `<p class="text-xs text-slate-500"><i class="fa-regular fa-sticky-note mr-1"></i>${escapeHtml(entry.notes)}</p>` : ''}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function openRegisterModal(dateISO) {
+            document.getElementById('editEntryId').value = '';
+            document.getElementById('modalTitle').innerText = '새 수업 진도 등록';
+            document.getElementById('submitBtn').innerText = '진도 등록';
+            document.getElementById('deleteEntryBtn').classList.add('hidden');
+
+            document.getElementById('inputDate').value = dateISO || formatDateISO(new Date());
+            document.getElementById('inputContent').value = '';
+            document.getElementById('inputNotes').value = '';
+            document.getElementById('inputShowNotes').checked = true;
+            document.getElementById('inputShowOnCalendar').checked = true;
+            selectedShowOnCalendar = true;
+
+            selectedFormGrades = appState.grades.length > 0 ? [appState.grades[0]] : ["1학년"];
+            selectedFormClasses = appState.classes.length > 0 ? [appState.classes[0]] : ["1반"];
+            selectedFormPeriods = ["1교시"];
+            selectedFormLessonSession = "";
+
+            populateModalDropdowns();
+            populateLessonSessionDropdown();
+            renderGradeChips();
+            renderClassChips();
+            renderPeriodChips();
+
+            document.getElementById('registerModal').classList.remove('hidden');
+        }
+
+        function openRegisterModalForEdit(entry) {
+            document.getElementById('editEntryId').value = entry.id;
+            document.getElementById('modalTitle').innerText = '수업 진도 수정';
+            document.getElementById('submitBtn').innerText = '수정 완료';
+            document.getElementById('deleteEntryBtn').classList.remove('hidden');
+
+            document.getElementById('inputDate').value = entry.date;
+            document.getElementById('inputContent').value = entry.content || '';
+            document.getElementById('inputNotes').value = entry.notes || '';
+            document.getElementById('inputShowNotes').checked = entry.showNotes !== false;
+            document.getElementById('inputShowOnCalendar').checked = entry.showOnCalendar !== false;
+            selectedShowOnCalendar = entry.showOnCalendar !== false;
+
+            selectedFormGrades = entry.grades ? [...entry.grades] : ["1학년"];
+            selectedFormClasses = entry.classes ? [...entry.classes] : (entry.className ? entry.className.split(', ') : []);
+            selectedFormPeriods = entry.periods ? [...entry.periods] : ["1교시"];
+            selectedFormLessonSession = entry.lessonSession || "";
+
+            populateModalDropdowns();
+            populateLessonSessionDropdown();
+            // Populate the unit options first, then restore the entry's saved unit.
+            const unitSelect = document.getElementById('selectUnit');
+            if (entry.unit && appState.units.includes(entry.unit)) {
+                unitSelect.value = entry.unit;
+            } else if (appState.units.length > 0) {
+                unitSelect.value = appState.units[0];
+            }
+            renderGradeChips();
+            renderClassChips();
+            renderPeriodChips();
+
+            document.getElementById('registerModal').classList.remove('hidden');
+        }
+
+        function closeRegisterModal() {
+            document.getElementById('registerModal').classList.add('hidden');
+        }
+
+        function populateModalDropdowns() {
+            const unitSelect = document.getElementById('selectUnit');
+            unitSelect.innerHTML = '';
+            appState.units.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u;
+                opt.innerText = u;
+                unitSelect.appendChild(opt);
+            });
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function renderClassChips() {
+            const container = document.getElementById('classChipsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (appState.classes.length === 0) {
+                container.innerHTML = '<span class="text-xs text-slate-400">등록된 반이 없습니다. (상단 "반 관리"에서 추가 가능)</span>';
+                return;
+            }
+
+            appState.classes.forEach(c => {
+                const isSelected = selectedFormClasses.includes(c);
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.onclick = () => toggleClassChip(c);
+                chip.className = `px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
+                    isSelected 
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`;
+                chip.innerHTML = `${isSelected ? '<i class="fa-solid fa-check mr-1 text-[10px]"></i>' : ''}${c}`;
+                container.appendChild(chip);
+            });
+        }
+
+        function toggleClassChip(c) {
+            if (selectedFormClasses.includes(c)) {
+                selectedFormClasses = selectedFormClasses.filter(item => item !== c);
+            } else {
+                selectedFormClasses.push(c);
+            }
+            renderClassChips();
+        }
+
+        function renderGradeChips() {
+            const container = document.getElementById('gradeChipsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const gradesList = appState.grades && appState.grades.length > 0 ? appState.grades : ["1학년", "2학년", "3학년"];
+
+            const isAllSelected = (selectedFormGrades.length === gradesList.length);
+            const allChip = document.createElement('button');
+            allChip.type = 'button';
+            allChip.onclick = () => toggleAllGradesChip();
+            allChip.className = `px-3.5 py-1.5 rounded-2xl text-xs font-semibold transition border ${
+                isAllSelected 
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+            }`;
+            allChip.innerHTML = `${isAllSelected ? '<i class="fa-solid fa-check mr-1 text-[10px]"></i>' : ''}전학년`;
+            container.appendChild(allChip);
+
+            gradesList.forEach(g => {
+                const isSelected = selectedFormGrades.includes(g);
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.onclick = () => toggleGradeChip(g);
+                chip.className = `px-3.5 py-1.5 rounded-2xl text-xs font-semibold transition border ${
+                    isSelected 
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`;
+                chip.innerHTML = `${isSelected ? '<i class="fa-solid fa-check mr-1 text-[10px]"></i>' : ''}${g}`;
+                container.appendChild(chip);
+            });
+        }
+
+        function toggleAllGradesChip() {
+            const gradesList = appState.grades && appState.grades.length > 0 ? appState.grades : ["1학년", "2학년", "3학년"];
+            if (selectedFormGrades.length === gradesList.length) {
+                selectedFormGrades = [];
+            } else {
+                selectedFormGrades = [...gradesList];
+            }
+            renderGradeChips();
+        }
+
+        function toggleGradeChip(g) {
+            if (selectedFormGrades.includes(g)) {
+                selectedFormGrades = selectedFormGrades.filter(item => item !== g);
+            } else {
+                selectedFormGrades.push(g);
+            }
+            renderGradeChips();
+        }
+
+        function renderPeriodChips() {
+            const container = document.getElementById('periodChipsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            PERIODS.forEach(p => {
+                const isSelected = selectedFormPeriods.includes(p);
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.onclick = () => togglePeriodChip(p);
+                chip.className = `px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
+                    isSelected 
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`;
+                chip.innerHTML = `${isSelected ? '<i class="fa-solid fa-check mr-1 text-[10px]"></i>' : ''}${p}`;
+                container.appendChild(chip);
+            });
+        }
+
+        function togglePeriodChip(p) {
+            if (selectedFormPeriods.includes(p)) {
+                if (selectedFormPeriods.length > 1) {
+                    selectedFormPeriods = selectedFormPeriods.filter(item => item !== p);
+                }
+            } else {
+                selectedFormPeriods.push(p);
+            }
+            renderPeriodChips();
+        }
+
+        function populateLessonSessionDropdown() {
+            const select = document.getElementById('selectLessonSession');
+            if (!select) return;
+
+            if (!Array.isArray(appState.lessonSessions) || appState.lessonSessions.length === 0) {
+                appState.lessonSessions = Array.from({ length: 20 }, (_, i) => `${i + 1}차시`);
+            }
+
+            select.innerHTML = '';
+            const noneOption = document.createElement('option');
+            noneOption.value = '';
+            noneOption.innerText = '차시 없음';
+            select.appendChild(noneOption);
+
+            appState.lessonSessions.forEach(session => {
+                const opt = document.createElement('option');
+                opt.value = session;
+                opt.innerText = session;
+                select.appendChild(opt);
+            });
+
+            const addOption = document.createElement('option');
+            addOption.value = '__ADD_LESSON_SESSION__';
+            addOption.innerText = '+ 차시 추가';
+            select.appendChild(addOption);
+
+            select.value = selectedFormLessonSession || '';
+        }
+
+        async function addLessonSessionOption() {
+            const input = prompt('추가할 차시를 입력하세요. 예: 21차시');
+            if (input === null) return;
+
+            let val = input.trim();
+            if (!val) {
+                showToast('차시를 입력해주세요.');
+                return;
+            }
+
+            if (!val.endsWith('차시')) val += '차시';
+
+            if (!/^\\d+차시$/.test(val)) {
+                showToast('예: 21차시처럼 숫자와 차시를 입력해주세요.');
+                return;
+            }
+
+            if (!Array.isArray(appState.lessonSessions)) appState.lessonSessions = [];
+
+            if (!appState.lessonSessions.includes(val)) {
+                appState.lessonSessions.push(val);
+                appState.lessonSessions.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+                saveLocalState();
+                await saveConfigToCloud();
+                showToast(`${val}이(가) 추가되었습니다.`);
+            }
+
+            selectedFormLessonSession = val;
+            populateLessonSessionDropdown();
+        }
+
+        function handleLessonSessionSelectChange() {
+            const select = document.getElementById('selectLessonSession');
+            if (!select) return;
+
+            if (select.value === '__ADD_LESSON_SESSION__') {
+                addLessonSessionOption();
+                return;
+            }
+
+            selectedFormLessonSession = select.value || '';
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const entryId = document.getElementById('editEntryId').value;
+            const date = document.getElementById('inputDate').value;
+            const unit = document.getElementById('selectUnit').value;
+            const lessonSession = document.getElementById('selectLessonSession').value || '';
+            const content = document.getElementById('inputContent').value.trim();
+            const notes = document.getElementById('inputNotes').value.trim();
+            const showNotes = document.getElementById('inputShowNotes').checked;
+            const showOnCalendar = document.getElementById('inputShowOnCalendar').checked;
+
+            const className = selectedFormClasses.join(', ');
+
+            if (!content) {
+                showToast("수업 내용을 입력해주세요.");
+                return;
+            }
+
+            let targetEntry = null;
+
+            if (entryId) {
+                const index = appState.entries.findIndex(e => e.id === entryId);
+                if (index !== -1) {
+                    targetEntry = {
+                        ...appState.entries[index],
+                        date,
+                        className,
+                        classes: [...selectedFormClasses],
+                        grades: [...selectedFormGrades],
+                        periods: [...selectedFormPeriods],
+                        lessonSession,
+                        unit,
+                        content,
+                        notes,
+                        showNotes,
+                        showOnCalendar
+                    };
+                    appState.entries[index] = targetEntry;
+                }
+                showToast("수업 진도가 수정되었습니다.");
+            } else {
+                targetEntry = {
+                    id: 'entry_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                    date,
+                    className,
+                    classes: [...selectedFormClasses],
+                    grades: [...selectedFormGrades],
+                    periods: [...selectedFormPeriods],
+                    lessonSession,
+                    unit,
+                    content,
+                    notes,
+                    showNotes,
+                    showOnCalendar
+                };
+                appState.entries.push(targetEntry);
+                showToast("새 수업 진도가 등록되었습니다.");
+            }
+
+            saveLocalState();
+            if (targetEntry) {
+                await saveEntryToCloud(targetEntry);
+            }
+            closeRegisterModal();
+            refreshView();
+        }
+
+        async function handleDeleteFromModal() {
+            const entryId = document.getElementById('editEntryId').value;
+            if (entryId) {
+                if (!confirm('이 수업 진도를 정말 삭제하시겠습니까?')) return;
+                appState.entries = appState.entries.filter(e => e.id !== entryId);
+                saveLocalState();
+                await deleteEntryFromCloud(entryId);
+                closeRegisterModal();
+                refreshView();
+                showToast("진도가 삭제되었습니다.");
+            }
+        }
+
+        async function moveEntryToDate(entryId, newDateISO) {
+            const entry = appState.entries.find(e => e.id === entryId);
+            if (entry) {
+                entry.date = newDateISO;
+                saveLocalState();
+                await saveEntryToCloud(entry);
+                refreshView();
+                showToast(`진도가 ${newDateISO}로 이동되었습니다.`);
+            }
+        }
+
+        function showContextMenu(e, entry) {
+            e.preventDefault();
+            activeContextMenuEntryId = entry.id;
+
+            const menu = document.getElementById('contextMenu');
+            menu.style.top = `${e.clientY}px`;
+            menu.style.left = `${e.clientX}px`;
+            menu.classList.remove('hidden');
+
+            const closeListener = () => {
+                menu.classList.add('hidden');
+                document.removeEventListener('click', closeListener);
+            };
+            setTimeout(() => document.addEventListener('click', closeListener), 100);
+        }
+
+        function contextActionEdit() {
+            const entry = appState.entries.find(e => e.id === activeContextMenuEntryId);
+            if (entry) openRegisterModalForEdit(entry);
+        }
+
+        async function contextActionDuplicate() {
+            const entry = appState.entries.find(e => e.id === activeContextMenuEntryId);
+            if (entry) {
+                const duplicate = {
+                    ...entry,
+                    id: 'entry_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                    content: entry.content
+                };
+                appState.entries.push(duplicate);
+                saveLocalState();
+                await saveEntryToCloud(duplicate);
+                refreshView();
+                showToast("수업 진도 복사본이 생성되었습니다.");
+            }
+        }
+
+        async function contextActionDelete() {
+            if (activeContextMenuEntryId) {
+                const deleteId = activeContextMenuEntryId;
+                if (!confirm('이 수업 진도를 정말 삭제하시겠습니까?')) return;
+                appState.entries = appState.entries.filter(e => e.id !== deleteId);
+                saveLocalState();
+                await deleteEntryFromCloud(deleteId);
+                refreshView();
+                showToast("진도가 삭제되었습니다.");
+            }
+        }
+
+        function openGradeManageModal() {
+            renderGradeList();
+            document.getElementById('gradeManageModal').classList.remove('hidden');
+        }
+        function closeGradeManageModal() {
+            document.getElementById('gradeManageModal').classList.add('hidden');
+            populateGradeFilters();
+        }
+        function renderGradeList() {
+            const container = document.getElementById('gradeListContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            appState.grades.forEach(g => {
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800";
+                const label = document.createElement('span');
+                label.textContent = g;
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'text-rose-500 hover:text-rose-700 transition';
+                button.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                button.addEventListener('click', () => removeGradeByName(g));
+                row.appendChild(label);
+                row.appendChild(button);
+                container.appendChild(row);
+            });
+        }
+        async function addGradeName() {
+            const input = document.getElementById('newGradeNameInput');
+            const val = input.value.trim();
+            if (val && !appState.grades.includes(val)) {
+                appState.grades.push(val);
+                input.value = '';
+                saveLocalState();
+                await saveConfigToCloud();
+                renderGradeList();
+                showToast("새 학년이 추가되었습니다.");
+            }
+        }
+        async function removeGradeByName(name) {
+            if (!confirm(`'${name}' 학년을 삭제하시겠습니까? 기존 진도 기록은 삭제되지 않습니다.`)) return;
+            appState.grades = appState.grades.filter(g => g !== name);
+            selectedFormGrades = selectedFormGrades.filter(g => g !== name);
+            saveLocalState();
+            await saveConfigToCloud();
+            renderGradeList();
+            renderGradeChips();
+            showToast("학년이 삭제되었습니다.");
+        }
+
+        function openClassManageModal() {
+            renderClassList();
+            document.getElementById('classManageModal').classList.remove('hidden');
+        }
+        function closeClassManageModal() {
+            document.getElementById('classManageModal').classList.add('hidden');
+            populateClassFilters();
+        }
+        function renderClassList() {
+            const container = document.getElementById('classListContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            appState.classes.forEach(c => {
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800";
+                const label = document.createElement('span');
+                label.textContent = c;
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'text-rose-500 hover:text-rose-700 transition';
+                button.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                button.addEventListener('click', () => removeClassByName(c));
+                row.appendChild(label);
+                row.appendChild(button);
+                container.appendChild(row);
+            });
+        }
+        async function addClassName() {
+            const input = document.getElementById('newClassNameInput');
+            const val = input.value.trim();
+            if (val && !appState.classes.includes(val)) {
+                appState.classes.push(val);
+                input.value = '';
+                saveLocalState();
+                await saveConfigToCloud();
+                renderClassList();
+                showToast("새 반이 추가되었습니다.");
+            }
+        }
+        async function removeClassByName(name) {
+            if (!confirm(`'${name}' 반을 삭제하시겠습니까? 기존 진도 기록은 삭제되지 않습니다.`)) return;
+            appState.classes = appState.classes.filter(c => c !== name);
+            selectedFormClasses = selectedFormClasses.filter(c => c !== name);
+            saveLocalState();
+            await saveConfigToCloud();
+            renderClassList();
+            renderClassChips();
+            showToast("반이 삭제되었습니다.");
+        }
+
+        function openUnitManageModal() {
+            renderUnitList();
+            document.getElementById('unitManageModal').classList.remove('hidden');
+        }
+        function closeUnitManageModal() {
+            document.getElementById('unitManageModal').classList.add('hidden');
+            populateModalDropdowns();
+            populateUnitFilters();
+            refreshView();
+        }
+        function renderUnitList() {
+            const container = document.getElementById('unitListContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            appState.units.forEach(u => {
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800";
+                const label = document.createElement('span');
+                label.className = 'truncate pr-2';
+                label.textContent = u;
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'text-rose-500 hover:text-rose-700 transition shrink-0';
+                button.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                button.addEventListener('click', () => removeUnitByName(u));
+                row.appendChild(label);
+                row.appendChild(button);
+                container.appendChild(row);
+            });
+        }
+        async function addUnitName() {
+            const input = document.getElementById('newUnitNameInput');
+            const val = input.value.trim();
+            if (val && !appState.units.includes(val)) {
+                appState.units.push(val);
+                input.value = '';
+                saveLocalState();
+                await saveConfigToCloud();
+                renderUnitList();
+                populateModalDropdowns();
+                populateUnitFilters();
+                showToast("새 단원이 추가되었습니다.");
+            }
+        }
+        async function removeUnitByName(name) {
+            if (appState.units.length <= 1) {
+                showToast("최소 1개 이상의 단원이 필요합니다.");
+                return;
+            }
+            if (!confirm(`'${name}' 단원을 삭제하시겠습니까? 기존 진도 기록은 삭제되지 않습니다.`)) return;
+            appState.units = appState.units.filter(u => u !== name);
+            saveLocalState();
+            await saveConfigToCloud();
+            renderUnitList();
+            populateModalDropdowns();
+            populateUnitFilters();
+            refreshView();
+            showToast("단원이 삭제되었습니다.");
+        }
+        function deleteCurrentUnit() {
+            const select = document.getElementById('selectUnit');
+            const val = select.value;
+            if (appState.units.length <= 1) {
+                showToast("최소 1개 이상의 단원이 필요합니다.");
+                return;
+            }
+            removeUnitByName(val);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        window.openGradeManageModal = openGradeManageModal;
+        window.closeGradeManageModal = closeGradeManageModal;
+        window.addGradeName = addGradeName;
+        window.removeGradeByName = removeGradeByName;
+
+        window.openClassManageModal = openClassManageModal;
+        window.closeClassManageModal = closeClassManageModal;
+        window.addClassName = addClassName;
+        window.removeClassByName = removeClassByName;
+
+        window.openUnitManageModal = openUnitManageModal;
+        window.closeUnitManageModal = closeUnitManageModal;
+        window.addUnitName = addUnitName;
+        window.removeUnitByName = removeUnitByName;
+        window.deleteCurrentUnit = deleteCurrentUnit;
+
+        window.openRegisterModal = openRegisterModal;
+        window.closeRegisterModal = closeRegisterModal;
+        window.handleFormSubmit = handleFormSubmit;
+        window.handleDeleteFromModal = handleDeleteFromModal;
+        window.addLessonSessionOption = addLessonSessionOption;
+        window.handleLessonSessionSelectChange = handleLessonSessionSelectChange;
+
+        window.goToToday = goToToday;
+        window.changeMonth = changeMonth;
+        window.onYearMonthChange = onYearMonthChange;
+        window.switchView = switchView;
+        window.handleSearch = handleSearch;
+        window.handleFilterChange = handleFilterChange;
+
+        window.setListPreset = setListPreset;
+        window.handleListCustomDateChange = handleListCustomDateChange;
+
+        window.contextActionEdit = contextActionEdit;
+        window.contextActionDuplicate = contextActionDuplicate;
+        window.contextActionDelete = contextActionDelete;
+    </script>
+</body>
+</html>
